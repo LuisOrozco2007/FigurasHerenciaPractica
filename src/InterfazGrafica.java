@@ -13,6 +13,10 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 
 public class InterfazGrafica extends JFrame {
 
@@ -94,6 +98,7 @@ public class InterfazGrafica extends JFrame {
             etiquetasCampos[i] = crearEtiqueta("", 13, false);
             fila.setBorder(BorderFactory.createEmptyBorder(0, 0, 9, 0));
             campos[i] = new JTextField();
+            ((AbstractDocument) campos[i].getDocument()).setDocumentFilter(new FiltroNumerico());
             campos[i].setFont(new Font("SansSerif", Font.PLAIN, 15));
             campos[i].setForeground(TEXTO);
             campos[i].setBorder(BorderFactory.createCompoundBorder(
@@ -228,12 +233,14 @@ public class InterfazGrafica extends JFrame {
         try {
             String figura = (String) selector.getSelectedItem();
             Figura resultado;
+            double valorExtra;
             if ("Circulo".equals(figura)) {
                 Circulo circulo = new Circulo(leerMedida(0));
                 resultado = circulo;
-                extraValor.setText(formatear(circulo.calcularDiametro()));
+                valorExtra = circulo.calcularDiametro();
             } else if ("Rectangulo".equals(figura)) {
                 resultado = new Rectangulo(leerMedida(0), leerMedida(1));
+                valorExtra = resultado.getLados();
             } else {
                 double lado1 = leerMedida(0);
                 double lado2 = leerMedida(1);
@@ -243,12 +250,18 @@ public class InterfazGrafica extends JFrame {
                     throw new IllegalArgumentException("Las medidas no forman un triangulo valido.");
                 }
                 resultado = new Triangulo(lado1, lado2, lado3);
+                valorExtra = resultado.getLados();
             }
-            if (!"Circulo".equals(figura)) {
-                extraValor.setText(String.valueOf(resultado.getLados()));
+            double area = resultado.calcularArea();
+            double perimetro = resultado.calcularPerimetro();
+            if (!Double.isFinite(area) || !Double.isFinite(perimetro)
+                    || !Double.isFinite(valorExtra)) {
+                throw new IllegalArgumentException("Las medidas son demasiado grandes para calcular.");
             }
-            areaValor.setText(formatear(resultado.calcularArea()));
-            perimetroValor.setText(formatear(resultado.calcularPerimetro()));
+            areaValor.setText(formatear(area));
+            perimetroValor.setText(formatear(perimetro));
+            extraValor.setText("Circulo".equals(figura)
+                    ? formatear(valorExtra) : String.valueOf((int) valorExtra));
             estado.setForeground(new Color(38, 139, 91));
             estado.setText("Calculo realizado correctamente.");
         } catch (IllegalArgumentException error) {
@@ -273,5 +286,25 @@ public class InterfazGrafica extends JFrame {
 
     private String formatear(double valor) {
         return String.format(Locale.getDefault(), "%.2f", valor);
+    }
+
+    private static class FiltroNumerico extends DocumentFilter {
+
+        @Override
+        public void insertString(FilterBypass bypass, int offset, String texto,
+                                 AttributeSet atributos) throws BadLocationException {
+            replace(bypass, offset, 0, texto, atributos);
+        }
+
+        @Override
+        public void replace(FilterBypass bypass, int offset, int longitud, String texto,
+                            AttributeSet atributos) throws BadLocationException {
+            String actual = bypass.getDocument().getText(0, bypass.getDocument().getLength());
+            String nuevo = actual.substring(0, offset) + texto
+                    + actual.substring(offset + longitud);
+            if (nuevo.matches("\\d*(?:[.,]\\d*)?")) {
+                bypass.replace(offset, longitud, texto, atributos);
+            }
+        }
     }
 }
