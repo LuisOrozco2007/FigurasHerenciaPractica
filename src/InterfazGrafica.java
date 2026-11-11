@@ -10,7 +10,10 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.text.AbstractDocument;
@@ -25,6 +28,7 @@ public class InterfazGrafica extends JFrame {
     private static final Color TEXTO = new Color(35, 45, 65);
     private static final Color SECUNDARIO = new Color(112, 124, 145);
 
+    private Figura[][] figurasGuardadas = new Figura[3][0];
     private final JComboBox<String> selector = new JComboBox<>(
             new String[]{"Circulo", "Rectangulo", "Triangulo"});
     private final JLabel[] etiquetasCampos = new JLabel[3];
@@ -117,12 +121,22 @@ public class InterfazGrafica extends JFrame {
         calcular.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
         calcular.addActionListener(evento -> calcular());
 
+        JButton verGuardadas = new JButton("Ver figuras guardadas");
+        verGuardadas.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        verGuardadas.setFocusPainted(false);
+        verGuardadas.addActionListener(evento -> mostrarFigurasGuardadas());
+
+        JPanel botones = new JPanel(new GridLayout(1, 2, 8, 0));
+        botones.setOpaque(false);
+        botones.add(calcular);
+        botones.add(verGuardadas);
+
         JPanel inferior = new JPanel(new BorderLayout(0, 10));
         inferior.setOpaque(false);
         estado.setFont(new Font("SansSerif", Font.PLAIN, 12));
         estado.setForeground(SECUNDARIO);
         inferior.add(estado, BorderLayout.NORTH);
-        inferior.add(calcular, BorderLayout.SOUTH);
+        inferior.add(botones, BorderLayout.SOUTH);
 
         tarjeta.add(parteSuperior, BorderLayout.NORTH);
         tarjeta.add(formulario, BorderLayout.CENTER);
@@ -258,6 +272,7 @@ public class InterfazGrafica extends JFrame {
                     || !Double.isFinite(valorExtra)) {
                 throw new IllegalArgumentException("Las medidas son demasiado grandes para calcular.");
             }
+            guardarFigura(resultado);
             areaValor.setText(formatear(area));
             perimetroValor.setText(formatear(perimetro));
             extraValor.setText("Circulo".equals(figura)
@@ -268,6 +283,58 @@ public class InterfazGrafica extends JFrame {
             estado.setForeground(new Color(190, 55, 55));
             estado.setText(error.getMessage());
         }
+    }
+
+    private void guardarFigura(Figura figura) {
+        int fila;
+        if ("Circulo".equals(figura.getNombre())) {
+            fila = 0;
+        } else if ("Rectangulo".equals(figura.getNombre())) {
+            fila = 1;
+        } else {
+            fila = 2;
+        }
+
+        Figura[][] nuevaMatriz = new Figura[figurasGuardadas.length][figurasGuardadas[0].length + 1];
+        for (int i = 0; i < figurasGuardadas.length; i++) {
+            System.arraycopy(figurasGuardadas[i], 0, nuevaMatriz[i], 0, figurasGuardadas[i].length);
+        }
+        nuevaMatriz[fila][nuevaMatriz[fila].length - 1] = figura;
+        figurasGuardadas = nuevaMatriz;
+    }
+
+    private void mostrarFigurasGuardadas() {
+        StringBuilder lista = new StringBuilder();
+        int total = 0;
+        String[] tipos = {"Circulo", "Rectangulo", "Triangulo"};
+        for (int columna = 0; columna < figurasGuardadas[0].length; columna++) {
+            for (int fila = 0; fila < figurasGuardadas.length; fila++) {
+                Figura figura = figurasGuardadas[fila][columna];
+                if (figura == null) {
+                    continue;
+                }
+                total++;
+                lista.append(total).append(". ").append(tipos[fila])
+                        .append(" | Area: ").append(formatear(figura.getArea()))
+                        .append(" | Perimetro: ").append(formatear(figura.getPerimetro()))
+                        .append('\n');
+            }
+        }
+
+        if (total == 0) {
+            JOptionPane.showMessageDialog(this, "Aun no hay figuras guardadas.",
+                    "Figuras guardadas", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JTextArea contenido = new JTextArea(12, 42);
+        contenido.setText(lista.toString());
+        contenido.setEditable(false);
+        contenido.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        contenido.setLineWrap(false);
+        contenido.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JOptionPane.showMessageDialog(this, new JScrollPane(contenido),
+                "Figuras guardadas (" + total + ")", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private double leerMedida(int indice) {
